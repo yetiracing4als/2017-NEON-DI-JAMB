@@ -63,13 +63,22 @@ def get_predictors(tree, chm_array, labels):
             full_crown, crown50, crown60, crown70]
 
 
-def make_canopy_model(training_data):
+def make_canopy_biomass_model(training_data):
     biomass = training_data[:, 0]
     biomass_predictors = training_data[:, 1:12]
     max_depth = 30
     regr_rf = RandomForestRegressor(max_depth=max_depth, random_state=2)
     regr_rf.fit(biomass_predictors, biomass)
     return regr_rf
+
+def apply_canopy_biomass_model(predictors, labels, regr_rf):
+    chm_dependant_data = np.array([x[1:] for x in predictors])
+    pred_biomass = regr_rf.predict(chm_dependant_data)
+    print np.sum(pred_biomass)
+    biomass_out = labels
+    for p, bm in zip(predictors, pred_biomass):
+        biomass_out[biomass_out == p[0]] = bm
+    return biomass_out
 
 
 chm_file = 'NEON_D17_SJER_DP3_256000_4106000_CHM.tif'
@@ -79,15 +88,12 @@ training_data_file = 'SJER_Biomass_Training.csv'
 training_data = np.genfromtxt(training_data_file, delimiter=',')
 
 predictors, labels = get_chm_predictors(chm_array)
-chm_dependant_data = np.array([x[1:] for x in predictors])
 
-regr_rf = make_canopy_model(training_data)
 
-pred_biomass = regr_rf.predict(chm_dependant_data)
+regr_rf = make_canopy_biomass_model(training_data)
 
-biomass_out = labels
-for p, bm in zip(predictors, pred_biomass):
-    biomass_out[biomass_out == p[0]] = bm
+pred_biomass = apply_canopy_biomass_model(predictors, labels, regr_rf)
+
 
 mean_biomass = np.mean(pred_biomass)
 std_biomass = np.std(pred_biomass)
@@ -95,3 +101,6 @@ min_biomass = np.min(pred_biomass)
 sum_biomass = np.sum(pred_biomass)
 
 print('Sum of biomass is ', sum_biomass, ' kg')
+
+#('Sum of biomass is ', 6977394.0499962922, ' kg')
+
