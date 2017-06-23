@@ -11,9 +11,12 @@ from sklearn.ensemble import RandomForestRegressor
 def open_array(chm_file):
     chm_dataset = gdal.Open(chm_file)
     chm_raster = chm_dataset.GetRasterBand(1)
-    chm_array = chm_raster.ReadAsArray(0, 0, chm_dataset.RasterXSize,
-                                      chm_dataset.RasterYSize).astype(np.float)
+    chm_array = chm_raster.ReadAsArray(0, 0, chm_dataset.RasterXSize, chm_dataset.RasterYSize).astype(np.float)
     return chm_array
+
+def get_chm_predictors(chm_array):
+    tree_properties, labels = get_trees(chm_array)
+    return [get_predictors(tree, chm_array, labels) for tree in tree_properties], labels
 
 def smooth_chm(chm_array):
     chm_array_smooth = ndi.gaussian_filter(chm_array, 2, mode='constant', cval=0, truncate=2.0)
@@ -32,11 +35,6 @@ def get_trees(chm_array):
                                  'Orientation', 'MajorAxisLength',
                                  'MinorAxisLength', 'MaxIntensity', 'MinIntensity'])
     return tree_properties, labels
-
-
-def get_chm_predictors(chm_array):
-    tree_properties, labels = get_trees(chm_array)
-    return [get_predictors(tree, chm_array, labels) for tree in tree_properties], labels
 
 
 def get_predictors(tree, chm_array, labels):
@@ -74,10 +72,9 @@ def make_canopy_biomass_model(training_data):
 def apply_canopy_biomass_model(predictors, labels, regr_rf):
     chm_dependant_data = np.array([x[1:] for x in predictors])
     pred_biomass = regr_rf.predict(chm_dependant_data)
-    print np.sum(pred_biomass)
     biomass_out = labels
     for p, bm in zip(predictors, pred_biomass):
-        biomass_out[biomass_out == p[0]] = bm
+        biomass_out[biomass_out == p[0]] = np.float(bm)
     return biomass_out
 
 
@@ -94,13 +91,5 @@ regr_rf = make_canopy_biomass_model(training_data)
 
 pred_biomass = apply_canopy_biomass_model(predictors, labels, regr_rf)
 
-
-mean_biomass = np.mean(pred_biomass)
-std_biomass = np.std(pred_biomass)
-min_biomass = np.min(pred_biomass)
-sum_biomass = np.sum(pred_biomass)
-
 print('Sum of biomass is ', sum_biomass, ' kg')
-
-#('Sum of biomass is ', 6977394.0499962922, ' kg')
 
