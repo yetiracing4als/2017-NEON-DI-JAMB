@@ -1,0 +1,5 @@
+# exclude all items listed
+*.qgs
+.DS_Store
+*.tif
+*.png
